@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ketura-épargne | Tontine & Épargne Pi Network</title>
+  <!-- SDK Pi Network Officiel -->
+  <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+  <style>
+    :root {
+      --primary-color: #5d2b86;
+      --secondary-color: #e3b04b;
+      --bg-color: #f4f6f8;
+      --card-bg: #ffffff;
+      --text-color: #333333;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header {
+      background-color: var(--primary-color);
+      color: white;
+      width: 100%;
+      padding: 20px 0;
+      text-align: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.8rem;
+    }
+
+    header p {
+      margin: 5px 0 0 0;
+      font-size: 0.9rem;
+      opacity: 0.9;
+    }
+
+    .container {
+      width: 90%;
+      max-width: 500px;
+      margin: 20px auto;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+
+    .card h2 {
+      margin-top: 0;
+      color: var(--primary-color);
+      font-size: 1.3rem;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .user-avatar {
+      width: 45px;
+      height: 45px;
+      background-color: var(--secondary-color);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: white;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      background-color: var(--primary-color);
+      color: white;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .btn:hover {
+      background-color: #48206b;
+    }
+
+    .btn-gold {
+      background-color: var(--secondary-color);
+      color: #333;
+    }
+
+    .btn-gold:hover {
+      background-color: #d4a03a;
+    }
+
+    .balance {
+      font-size: 1.6rem;
+      font-weight: bold;
+      color: var(--primary-color);
+      margin: 10px 0;
+    }
+
+    .status {
+      padding: 10px;
+      border-radius: 6px;
+      background-color: #eef2f5;
+      font-size: 0.85rem;
+      color: #555;
+      margin-top: 10px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Ketura-épargne</h1>
+    <p>Épargne & Tontine communautaire sur Pi Network</p>
+  </header>
+
+  <div class="container">
+    <!-- Section Authentification -->
+    <div class="card" id="auth-section">
+      <h2>Connexion Pi Network</h2>
+      <p>Connectez-vous avec votre compte Pi pour accéder à vos tontines et votre solde d'épargne.</p>
+      <button class="btn" id="login-btn" onclick="loginWithPi()">Se connecter avec Pi Browser</button>
+    </div>
+
+    <!-- Dashboard Utilisateur (Masqué avant la connexion) -->
+    <div class="card" id="dashboard-section" style="display: none;">
+      <div class="user-info">
+        <div class="user-avatar" id="user-avatar">K</div>
+        <div>
+          <strong id="user-name">Pioneer</strong>
+          <br>
+          <small id="user-uid" style="color: #777;">ID: ...</small>
+        </div>
+      </div>
+
+      <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
+
+      <h2>Mon Épargne Tontine</h2>
+      <div class="balance"><span id="pi-balance">0.00</span> π</div>
+
+      <div style="display: flex; gap: 10px; margin-top: 15px;">
+        <button class="btn btn-gold" onclick="cotiserPi()">Cotiser (1 π)</button>
+        <button class="btn" onclick="alert('Fonctionnalité de retrait disponible à la fin de la tontine !')">Retirer</button>
+      </div>
+    </div>
+
+    <!-- Statut des interactions -->
+    <div class="card">
+      <h2>Statut du système</h2>
+      <div class="status" id="status-message">En attente d'interaction de l'utilisateur...</div>
+    </div>
+  </div>
+
+  <script>
+    // Initialisation du SDK Pi
+    const Pi = window.Pi;
+    Pi.init({ version: "2.0", sandbox: true });
+
+    function setStatus(msg) {
+      document.getElementById('status-message').innerText = msg;
+    }
+
+    // Connexion via le SDK Pi
+    async function loginWithPi() {
+      setStatus("Tentative de connexion en cours via Pi Browser...");
+      try {
+        const scopes = ['username', 'payments'];
+        
+        // Incomplete payment handler exigé par le SDK Pi
+        function onIncompletePaymentFound(payment) {
+          console.log("Paiement incomplet trouvé :", payment);
+          setStatus("Paiement non finalisé détecté : " + payment.identifier);
+        };
+
+        const auth = await Pi.authenticate(scopes, onIncompletePaymentFound);
+        
+        // Affichage des informations utilisateur
+        document.getElementById('user-name').innerText = auth.user.username;
+        document.getElementById('user-avatar').innerText = auth.user.username.charAt(0).toUpperCase();
+        document.getElementById('user-uid').innerText = "UID: " + auth.user.uid.substring(0, 10) + "...";
+        
+        // Basculer l'affichage
+        document.getElementById('auth-section').style.display = 'none';
+        document.getElementById('dashboard-section').style.display = 'block';
+        setStatus("Connecté avec succès en tant que @" + auth.user.username);
+
+      } catch (error) {
+        console.error("Erreur d'authentification :", error);
+        setStatus("Erreur lors de la connexion. Assurez-vous d'ouvrir la page dans Pi Browser.");
+      }
+    }
+
+    // Fonction d'exemple de cotisation en Pi
+    async function cotiserPi() {
+      setStatus("Préparation du paiement de cotisation de 1 Pi...");
+      try {
+        const paymentData = {
+          amount: 1,
+          memo: "Cotisation Tontine Ketura-épargne",
+          metadata: { type: "cotisation_tontine" }
+        };
+
+        const paymentCallbacks = {
+          onReadyForServerApproval: function(paymentId) {
+            setStatus("Paiement prêt pour approbation serveur (ID: " + paymentId + ")");
+          },
+          onReadyForServerCompletion: function(paymentId, txid) {
+            setStatus("Paiement complété ! Transaction ID: " + txid);
+            // Mettre à jour le solde virtuel
+            let current = parseFloat(document.getElementById('pi-balance').innerText);
+            document.getElementById('pi-balance').innerText = (current + 1.00).toFixed(2);
+          },
+          onCancel: function(paymentId) {
+            setStatus("Paiement annulé par l'utilisateur.");
+          },
+          onError: function(error, payment) {
+            setStatus("Erreur de paiement : " + error.message);
+          }
+        };
+
+        await Pi.createPayment(paymentData, paymentCallbacks);
+
+      } catch (error) {
+        console.error("Erreur de création du paiement :", error);
+        setStatus("Impossible d'initialiser le paiement.");
+      }
+    }
+  </script>
+</body>
+</html>
